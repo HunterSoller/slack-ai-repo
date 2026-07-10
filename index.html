@@ -881,9 +881,10 @@
         const date = addDays(firstGridDate, index);
         const dateKey = toDateKey(date);
         const dayEvents = visibleEvents.filter((event) => event.dateKey === dateKey).sort(sortByDateTime);
-        const dayButton = document.createElement("button");
-        dayButton.type = "button";
+        const dayButton = document.createElement("div");
         dayButton.className = "day";
+        dayButton.setAttribute("role", "button");
+        dayButton.setAttribute("tabindex", "0");
         dayButton.setAttribute("aria-label", buildDayLabel(date, dayEvents));
 
         if (date.getMonth() !== state.displayDate.getMonth()) {
@@ -901,6 +902,13 @@
         dayButton.addEventListener("click", () => {
           state.selectedDateKey = dateKey;
           renderSelectedDate(getVisibleEvents());
+        });
+        dayButton.addEventListener("keydown", (event) => {
+          if (event.key === "Enter" || event.key === " ") {
+            event.preventDefault();
+            state.selectedDateKey = dateKey;
+            renderSelectedDate(getVisibleEvents());
+          }
         });
 
         const number = document.createElement("div");
