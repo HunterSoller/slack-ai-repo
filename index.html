@@ -1,0 +1,1095 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Interactive Calendar Dashboard</title>
+  <style>
+    :root {
+      --bg: #0f172a;
+      --panel: #111827;
+      --panel-soft: #1f2937;
+      --panel-border: #334155;
+      --text: #e5e7eb;
+      --muted: #94a3b8;
+      --meeting: #38bdf8;
+      --deadline: #fb7185;
+      --focus: #a78bfa;
+      --conflict: #f59e0b;
+      --success: #34d399;
+      --shadow: 0 24px 70px rgba(0, 0, 0, 0.35);
+      color-scheme: dark;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background:
+        radial-gradient(circle at top left, rgba(56, 189, 248, 0.18), transparent 36rem),
+        radial-gradient(circle at 80% 15%, rgba(167, 139, 250, 0.18), transparent 30rem),
+        var(--bg);
+      color: var(--text);
+    }
+
+    button,
+    input,
+    select {
+      font: inherit;
+    }
+
+    button {
+      cursor: pointer;
+    }
+
+    .page {
+      width: min(1180px, calc(100% - 32px));
+      margin: 0 auto;
+      padding: 32px 0 48px;
+    }
+
+    .hero {
+      display: grid;
+      gap: 24px;
+      grid-template-columns: minmax(0, 1fr) auto;
+      align-items: end;
+      margin-bottom: 24px;
+    }
+
+    .eyebrow {
+      margin: 0 0 8px;
+      color: var(--success);
+      font-size: 0.78rem;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: clamp(2rem, 4vw, 4rem);
+      line-height: 0.95;
+      letter-spacing: -0.05em;
+    }
+
+    .subtitle {
+      max-width: 720px;
+      margin: 16px 0 0;
+      color: var(--muted);
+      font-size: 1.02rem;
+      line-height: 1.65;
+    }
+
+    .today-card {
+      width: 210px;
+      padding: 20px;
+      border: 1px solid rgba(148, 163, 184, 0.24);
+      border-radius: 24px;
+      background: rgba(15, 23, 42, 0.72);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(16px);
+    }
+
+    .today-card span {
+      display: block;
+      color: var(--muted);
+      font-size: 0.82rem;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .today-card strong {
+      display: block;
+      margin-top: 8px;
+      font-size: 2.2rem;
+      line-height: 1;
+    }
+
+    .toolbar {
+      display: grid;
+      gap: 16px;
+      grid-template-columns: 1fr auto;
+      align-items: center;
+      margin-bottom: 18px;
+      padding: 16px;
+      border: 1px solid rgba(148, 163, 184, 0.22);
+      border-radius: 24px;
+      background: rgba(15, 23, 42, 0.68);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(16px);
+    }
+
+    .filters {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      align-items: center;
+    }
+
+    .filter-chip {
+      display: inline-flex;
+      gap: 8px;
+      align-items: center;
+      padding: 10px 14px;
+      border: 1px solid rgba(148, 163, 184, 0.24);
+      border-radius: 999px;
+      background: rgba(30, 41, 59, 0.82);
+      color: var(--text);
+      transition: border-color 160ms ease, transform 160ms ease, background 160ms ease;
+    }
+
+    .filter-chip:hover,
+    .filter-chip:focus-visible {
+      border-color: rgba(226, 232, 240, 0.7);
+      outline: none;
+      transform: translateY(-1px);
+    }
+
+    .filter-chip[aria-pressed="false"] {
+      background: rgba(15, 23, 42, 0.72);
+      color: var(--muted);
+    }
+
+    .dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 999px;
+      background: var(--meeting);
+    }
+
+    .dot.deadline {
+      background: var(--deadline);
+    }
+
+    .dot.focus {
+      background: var(--focus);
+    }
+
+    .toolbar-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      justify-content: flex-end;
+    }
+
+    .search {
+      width: min(290px, 100%);
+      padding: 11px 14px;
+      border: 1px solid rgba(148, 163, 184, 0.24);
+      border-radius: 14px;
+      background: rgba(15, 23, 42, 0.84);
+      color: var(--text);
+    }
+
+    .nav-button,
+    .secondary-button {
+      padding: 10px 14px;
+      border: 1px solid rgba(148, 163, 184, 0.24);
+      border-radius: 14px;
+      background: rgba(30, 41, 59, 0.8);
+      color: var(--text);
+    }
+
+    .nav-button:hover,
+    .secondary-button:hover,
+    .nav-button:focus-visible,
+    .secondary-button:focus-visible {
+      border-color: rgba(226, 232, 240, 0.72);
+      outline: none;
+    }
+
+    .stats {
+      display: grid;
+      gap: 14px;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      margin-bottom: 18px;
+    }
+
+    .stat-card {
+      padding: 18px;
+      border: 1px solid rgba(148, 163, 184, 0.2);
+      border-radius: 20px;
+      background: rgba(17, 24, 39, 0.76);
+    }
+
+    .stat-card span {
+      display: block;
+      color: var(--muted);
+      font-size: 0.78rem;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .stat-card strong {
+      display: block;
+      margin-top: 8px;
+      font-size: 2rem;
+    }
+
+    .layout {
+      display: grid;
+      gap: 18px;
+      grid-template-columns: minmax(0, 1fr) 360px;
+      align-items: start;
+    }
+
+    .calendar-shell,
+    .side-panel {
+      border: 1px solid rgba(148, 163, 184, 0.22);
+      border-radius: 28px;
+      background: rgba(17, 24, 39, 0.8);
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+
+    .calendar-header {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      justify-content: space-between;
+      padding: 18px;
+      border-bottom: 1px solid rgba(148, 163, 184, 0.18);
+    }
+
+    .calendar-header h2 {
+      margin: 0;
+      font-size: 1.35rem;
+      letter-spacing: -0.03em;
+    }
+
+    .calendar-nav {
+      display: flex;
+      gap: 8px;
+    }
+
+    .weekday-grid,
+    .calendar-grid {
+      display: grid;
+      grid-template-columns: repeat(7, minmax(0, 1fr));
+    }
+
+    .weekday-grid {
+      border-bottom: 1px solid rgba(148, 163, 184, 0.18);
+      background: rgba(15, 23, 42, 0.54);
+    }
+
+    .weekday-grid div {
+      padding: 12px 10px;
+      color: var(--muted);
+      font-size: 0.74rem;
+      font-weight: 800;
+      letter-spacing: 0.08em;
+      text-align: center;
+      text-transform: uppercase;
+    }
+
+    .day {
+      min-height: 132px;
+      padding: 10px;
+      border-right: 1px solid rgba(148, 163, 184, 0.14);
+      border-bottom: 1px solid rgba(148, 163, 184, 0.14);
+      background: rgba(15, 23, 42, 0.34);
+      text-align: left;
+      color: inherit;
+    }
+
+    .day:nth-child(7n) {
+      border-right: 0;
+    }
+
+    .day:hover,
+    .day:focus-visible {
+      outline: 2px solid rgba(56, 189, 248, 0.46);
+      outline-offset: -2px;
+    }
+
+    .day.is-muted {
+      opacity: 0.38;
+    }
+
+    .day.is-today {
+      background: rgba(56, 189, 248, 0.1);
+    }
+
+    .day.has-conflict {
+      box-shadow: inset 0 0 0 2px rgba(245, 158, 11, 0.7);
+    }
+
+    .day-number {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 8px;
+      font-weight: 800;
+    }
+
+    .conflict-badge {
+      padding: 3px 7px;
+      border-radius: 999px;
+      background: rgba(245, 158, 11, 0.18);
+      color: #fbbf24;
+      font-size: 0.68rem;
+      font-weight: 800;
+      letter-spacing: 0.03em;
+      text-transform: uppercase;
+    }
+
+    .event-pill {
+      display: block;
+      width: 100%;
+      margin-top: 6px;
+      padding: 7px 8px;
+      border: 0;
+      border-left: 4px solid var(--meeting);
+      border-radius: 10px;
+      background: rgba(56, 189, 248, 0.14);
+      color: var(--text);
+      font-size: 0.78rem;
+      line-height: 1.25;
+      text-align: left;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .event-pill.deadline {
+      border-left-color: var(--deadline);
+      background: rgba(251, 113, 133, 0.14);
+    }
+
+    .event-pill.focus {
+      border-left-color: var(--focus);
+      background: rgba(167, 139, 250, 0.14);
+    }
+
+    .event-pill.is-conflict {
+      box-shadow: inset 0 0 0 1px rgba(245, 158, 11, 0.95);
+    }
+
+    .more-count {
+      margin-top: 7px;
+      color: var(--muted);
+      font-size: 0.75rem;
+    }
+
+    .side-panel {
+      position: sticky;
+      top: 18px;
+    }
+
+    .panel-section {
+      padding: 20px;
+      border-bottom: 1px solid rgba(148, 163, 184, 0.18);
+    }
+
+    .panel-section:last-child {
+      border-bottom: 0;
+    }
+
+    .panel-section h2,
+    .panel-section h3 {
+      margin: 0 0 12px;
+      letter-spacing: -0.03em;
+    }
+
+    .event-list {
+      display: grid;
+      gap: 12px;
+      margin: 0;
+      padding: 0;
+      list-style: none;
+    }
+
+    .event-card {
+      padding: 14px;
+      border: 1px solid rgba(148, 163, 184, 0.18);
+      border-radius: 16px;
+      background: rgba(15, 23, 42, 0.58);
+    }
+
+    .event-card.conflict {
+      border-color: rgba(245, 158, 11, 0.64);
+    }
+
+    .event-meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+      margin-bottom: 8px;
+      color: var(--muted);
+      font-size: 0.8rem;
+    }
+
+    .type-tag {
+      padding: 3px 8px;
+      border-radius: 999px;
+      background: rgba(56, 189, 248, 0.15);
+      color: #7dd3fc;
+      font-weight: 800;
+      text-transform: capitalize;
+    }
+
+    .type-tag.deadline {
+      background: rgba(251, 113, 133, 0.15);
+      color: #fda4af;
+    }
+
+    .type-tag.focus {
+      background: rgba(167, 139, 250, 0.15);
+      color: #c4b5fd;
+    }
+
+    .event-title {
+      margin: 0 0 7px;
+      font-size: 0.98rem;
+      font-weight: 800;
+    }
+
+    .event-note {
+      margin: 0;
+      color: var(--muted);
+      font-size: 0.86rem;
+      line-height: 1.45;
+    }
+
+    .empty-state {
+      margin: 0;
+      color: var(--muted);
+      line-height: 1.5;
+    }
+
+    .legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      color: var(--muted);
+      font-size: 0.85rem;
+    }
+
+    .legend span {
+      display: inline-flex;
+      gap: 7px;
+      align-items: center;
+    }
+
+    @media (max-width: 980px) {
+      .hero,
+      .toolbar,
+      .layout {
+        grid-template-columns: 1fr;
+      }
+
+      .today-card,
+      .search {
+        width: 100%;
+      }
+
+      .toolbar-actions {
+        justify-content: flex-start;
+      }
+
+      .stats {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .side-panel {
+        position: static;
+      }
+    }
+
+    @media (max-width: 640px) {
+      .page {
+        width: min(100% - 20px, 1180px);
+        padding-top: 18px;
+      }
+
+      .stats {
+        grid-template-columns: 1fr;
+      }
+
+      .calendar-shell {
+        overflow-x: auto;
+      }
+
+      .weekday-grid,
+      .calendar-grid {
+        min-width: 720px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <section class="hero" aria-labelledby="page-title">
+      <div>
+        <p class="eyebrow">Sample calendar operations</p>
+        <h1 id="page-title">Interactive scheduling dashboard</h1>
+        <p class="subtitle">
+          Review upcoming meetings, deadlines, and protected focus blocks in one place.
+          Toggle event types, search the sample data, and spot overlapping commitments
+          highlighted directly on the calendar.
+        </p>
+      </div>
+      <aside class="today-card" aria-label="Today's date">
+        <span>Today</span>
+        <strong id="todayDate">--</strong>
+      </aside>
+    </section>
+
+    <section class="toolbar" aria-label="Calendar controls">
+      <div class="filters" aria-label="Event type filters">
+        <button class="filter-chip" type="button" data-filter="meeting" aria-pressed="true">
+          <span class="dot"></span> Meetings
+        </button>
+        <button class="filter-chip" type="button" data-filter="deadline" aria-pressed="true">
+          <span class="dot deadline"></span> Deadlines
+        </button>
+        <button class="filter-chip" type="button" data-filter="focus" aria-pressed="true">
+          <span class="dot focus"></span> Focus time
+        </button>
+      </div>
+      <div class="toolbar-actions">
+        <input id="searchInput" class="search" type="search" placeholder="Search events or owners" aria-label="Search events">
+        <button id="clearFilters" class="secondary-button" type="button">Reset filters</button>
+      </div>
+    </section>
+
+    <section class="stats" aria-label="Calendar summary">
+      <article class="stat-card">
+        <span>Visible events</span>
+        <strong id="visibleCount">0</strong>
+      </article>
+      <article class="stat-card">
+        <span>Conflicts</span>
+        <strong id="conflictCount">0</strong>
+      </article>
+      <article class="stat-card">
+        <span>Next deadline</span>
+        <strong id="nextDeadline">--</strong>
+      </article>
+      <article class="stat-card">
+        <span>Focus hours</span>
+        <strong id="focusHours">0</strong>
+      </article>
+    </section>
+
+    <section class="layout">
+      <section class="calendar-shell" aria-label="Monthly calendar">
+        <div class="calendar-header">
+          <h2 id="monthLabel">Month YYYY</h2>
+          <div class="calendar-nav" aria-label="Calendar navigation">
+            <button id="previousMonth" class="nav-button" type="button" aria-label="Previous month">Prev</button>
+            <button id="currentMonth" class="nav-button" type="button">Today</button>
+            <button id="nextMonth" class="nav-button" type="button" aria-label="Next month">Next</button>
+          </div>
+        </div>
+        <div class="weekday-grid" aria-hidden="true">
+          <div>Sun</div>
+          <div>Mon</div>
+          <div>Tue</div>
+          <div>Wed</div>
+          <div>Thu</div>
+          <div>Fri</div>
+          <div>Sat</div>
+        </div>
+        <div id="calendarGrid" class="calendar-grid"></div>
+      </section>
+
+      <aside class="side-panel" aria-label="Event details">
+        <section class="panel-section">
+          <h2>Upcoming events</h2>
+          <ul id="upcomingList" class="event-list"></ul>
+        </section>
+        <section class="panel-section">
+          <h3 id="selectedDateTitle">Select a day</h3>
+          <ul id="selectedDateList" class="event-list"></ul>
+        </section>
+        <section class="panel-section">
+          <h3>Legend</h3>
+          <div class="legend">
+            <span><span class="dot"></span>Meeting</span>
+            <span><span class="dot deadline"></span>Deadline</span>
+            <span><span class="dot focus"></span>Focus time</span>
+            <span><span class="conflict-badge">Conflict</span>Overlap</span>
+          </div>
+        </section>
+      </aside>
+    </section>
+  </main>
+
+  <script>
+    const typeLabels = {
+      meeting: "Meeting",
+      deadline: "Deadline",
+      focus: "Focus time"
+    };
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const sampleEvents = [
+      {
+        id: 1,
+        title: "Product roadmap sync",
+        type: "meeting",
+        owner: "Avery",
+        offsetDays: 1,
+        start: "09:30",
+        end: "10:30",
+        note: "Review launch milestones and decision owners."
+      },
+      {
+        id: 2,
+        title: "Q3 planning deck due",
+        type: "deadline",
+        owner: "Morgan",
+        offsetDays: 1,
+        start: "10:00",
+        end: "10:15",
+        note: "Final deck needs stakeholder comments resolved."
+      },
+      {
+        id: 3,
+        title: "Deep work: onboarding flow",
+        type: "focus",
+        owner: "Riley",
+        offsetDays: 2,
+        start: "13:00",
+        end: "15:00",
+        note: "Protected focus block for interface polish."
+      },
+      {
+        id: 4,
+        title: "Customer feedback review",
+        type: "meeting",
+        owner: "Sam",
+        offsetDays: 3,
+        start: "11:00",
+        end: "12:00",
+        note: "Summarize beta account feedback themes."
+      },
+      {
+        id: 5,
+        title: "API contract sign-off",
+        type: "deadline",
+        owner: "Jordan",
+        offsetDays: 4,
+        start: "16:00",
+        end: "16:30",
+        note: "Confirm request and response examples are complete."
+      },
+      {
+        id: 6,
+        title: "Engineering design review",
+        type: "meeting",
+        owner: "Taylor",
+        offsetDays: 5,
+        start: "14:00",
+        end: "15:00",
+        note: "Walk through sync reliability tradeoffs."
+      },
+      {
+        id: 7,
+        title: "Focus: analytics migration",
+        type: "focus",
+        owner: "Casey",
+        offsetDays: 5,
+        start: "14:30",
+        end: "16:00",
+        note: "Reserved time overlaps design review for conflict demo."
+      },
+      {
+        id: 8,
+        title: "Launch checklist review",
+        type: "meeting",
+        owner: "Jamie",
+        offsetDays: 8,
+        start: "10:30",
+        end: "11:15",
+        note: "Confirm dependencies and owner readiness."
+      },
+      {
+        id: 9,
+        title: "Security questionnaire due",
+        type: "deadline",
+        owner: "Devon",
+        offsetDays: 10,
+        start: "12:00",
+        end: "12:30",
+        note: "Submit completed vendor questionnaire."
+      },
+      {
+        id: 10,
+        title: "Focus: incident runbook",
+        type: "focus",
+        owner: "Quinn",
+        offsetDays: 12,
+        start: "09:00",
+        end: "11:00",
+        note: "Update escalation paths and troubleshooting steps."
+      },
+      {
+        id: 11,
+        title: "Partner integration kickoff",
+        type: "meeting",
+        owner: "Harper",
+        offsetDays: 15,
+        start: "15:00",
+        end: "16:00",
+        note: "Align timelines with partner engineering."
+      },
+      {
+        id: 12,
+        title: "Release notes draft due",
+        type: "deadline",
+        owner: "Emerson",
+        offsetDays: 18,
+        start: "17:00",
+        end: "17:30",
+        note: "Collect customer-facing release notes."
+      }
+    ];
+
+    const state = {
+      activeTypes: new Set(["meeting", "deadline", "focus"]),
+      displayDate: new Date(today),
+      selectedDateKey: toDateKey(today),
+      searchTerm: ""
+    };
+
+    const events = sampleEvents.map((event) => {
+      const date = addDays(today, event.offsetDays);
+      return {
+        ...event,
+        date,
+        dateKey: toDateKey(date),
+        startMinutes: toMinutes(event.start),
+        endMinutes: toMinutes(event.end)
+      };
+    });
+
+    markConflicts(events);
+
+    const elements = {
+      calendarGrid: document.querySelector("#calendarGrid"),
+      monthLabel: document.querySelector("#monthLabel"),
+      upcomingList: document.querySelector("#upcomingList"),
+      selectedDateList: document.querySelector("#selectedDateList"),
+      selectedDateTitle: document.querySelector("#selectedDateTitle"),
+      visibleCount: document.querySelector("#visibleCount"),
+      conflictCount: document.querySelector("#conflictCount"),
+      nextDeadline: document.querySelector("#nextDeadline"),
+      focusHours: document.querySelector("#focusHours"),
+      todayDate: document.querySelector("#todayDate"),
+      searchInput: document.querySelector("#searchInput")
+    };
+
+    elements.todayDate.textContent = today.toLocaleDateString(undefined, {
+      month: "short",
+      day: "numeric"
+    });
+
+    document.querySelectorAll("[data-filter]").forEach((button) => {
+      button.addEventListener("click", () => {
+        const type = button.dataset.filter;
+        if (state.activeTypes.has(type)) {
+          state.activeTypes.delete(type);
+        } else {
+          state.activeTypes.add(type);
+        }
+
+        button.setAttribute("aria-pressed", String(state.activeTypes.has(type)));
+        render();
+      });
+    });
+
+    elements.searchInput.addEventListener("input", (event) => {
+      state.searchTerm = event.target.value.trim().toLowerCase();
+      render();
+    });
+
+    document.querySelector("#clearFilters").addEventListener("click", () => {
+      state.activeTypes = new Set(["meeting", "deadline", "focus"]);
+      state.searchTerm = "";
+      elements.searchInput.value = "";
+      document.querySelectorAll("[data-filter]").forEach((button) => {
+        button.setAttribute("aria-pressed", "true");
+      });
+      render();
+    });
+
+    document.querySelector("#previousMonth").addEventListener("click", () => {
+      state.displayDate.setMonth(state.displayDate.getMonth() - 1);
+      render();
+    });
+
+    document.querySelector("#nextMonth").addEventListener("click", () => {
+      state.displayDate.setMonth(state.displayDate.getMonth() + 1);
+      render();
+    });
+
+    document.querySelector("#currentMonth").addEventListener("click", () => {
+      state.displayDate = new Date(today);
+      state.selectedDateKey = toDateKey(today);
+      render();
+    });
+
+    render();
+
+    function render() {
+      const visibleEvents = getVisibleEvents();
+      renderStats(visibleEvents);
+      renderCalendar(visibleEvents);
+      renderUpcoming(visibleEvents);
+      renderSelectedDate(visibleEvents);
+    }
+
+    function renderStats(visibleEvents) {
+      const visibleConflicts = visibleEvents.filter((event) => event.hasConflict);
+      const nextDeadline = visibleEvents
+        .filter((event) => event.type === "deadline")
+        .sort(sortByDateTime)[0];
+      const focusMinutes = visibleEvents
+        .filter((event) => event.type === "focus")
+        .reduce((total, event) => total + event.endMinutes - event.startMinutes, 0);
+
+      elements.visibleCount.textContent = visibleEvents.length;
+      elements.conflictCount.textContent = new Set(visibleConflicts.map((event) => event.conflictGroup)).size;
+      elements.nextDeadline.textContent = nextDeadline ? formatShortDate(nextDeadline.date) : "--";
+      elements.focusHours.textContent = (focusMinutes / 60).toFixed(focusMinutes % 60 === 0 ? 0 : 1);
+    }
+
+    function renderCalendar(visibleEvents) {
+      elements.monthLabel.textContent = state.displayDate.toLocaleDateString(undefined, {
+        month: "long",
+        year: "numeric"
+      });
+
+      elements.calendarGrid.innerHTML = "";
+
+      const monthStart = new Date(state.displayDate.getFullYear(), state.displayDate.getMonth(), 1);
+      const firstGridDate = addDays(monthStart, -monthStart.getDay());
+
+      for (let index = 0; index < 42; index += 1) {
+        const date = addDays(firstGridDate, index);
+        const dateKey = toDateKey(date);
+        const dayEvents = visibleEvents.filter((event) => event.dateKey === dateKey).sort(sortByDateTime);
+        const dayButton = document.createElement("button");
+        dayButton.type = "button";
+        dayButton.className = "day";
+        dayButton.setAttribute("aria-label", buildDayLabel(date, dayEvents));
+
+        if (date.getMonth() !== state.displayDate.getMonth()) {
+          dayButton.classList.add("is-muted");
+        }
+
+        if (dateKey === toDateKey(today)) {
+          dayButton.classList.add("is-today");
+        }
+
+        if (dayEvents.some((event) => event.hasConflict)) {
+          dayButton.classList.add("has-conflict");
+        }
+
+        dayButton.addEventListener("click", () => {
+          state.selectedDateKey = dateKey;
+          renderSelectedDate(getVisibleEvents());
+        });
+
+        const number = document.createElement("div");
+        number.className = "day-number";
+        number.innerHTML = `<span>${date.getDate()}</span>`;
+
+        if (dayEvents.some((event) => event.hasConflict)) {
+          const badge = document.createElement("span");
+          badge.className = "conflict-badge";
+          badge.textContent = "Conflict";
+          number.append(badge);
+        }
+
+        dayButton.append(number);
+
+        dayEvents.slice(0, 3).forEach((event) => {
+          const pill = document.createElement("span");
+          pill.className = `event-pill ${event.type}`;
+          if (event.hasConflict) {
+            pill.classList.add("is-conflict");
+          }
+          pill.textContent = `${event.start} ${event.title}`;
+          dayButton.append(pill);
+        });
+
+        if (dayEvents.length > 3) {
+          const more = document.createElement("div");
+          more.className = "more-count";
+          more.textContent = `+${dayEvents.length - 3} more`;
+          dayButton.append(more);
+        }
+
+        elements.calendarGrid.append(dayButton);
+      }
+    }
+
+    function renderUpcoming(visibleEvents) {
+      const upcoming = visibleEvents
+        .filter((event) => event.date >= today)
+        .sort(sortByDateTime)
+        .slice(0, 6);
+
+      elements.upcomingList.innerHTML = "";
+
+      if (upcoming.length === 0) {
+        elements.upcomingList.append(emptyListItem("No upcoming events match the current filters."));
+        return;
+      }
+
+      upcoming.forEach((event) => {
+        elements.upcomingList.append(createEventCard(event));
+      });
+    }
+
+    function renderSelectedDate(visibleEvents) {
+      const date = fromDateKey(state.selectedDateKey);
+      const dayEvents = visibleEvents
+        .filter((event) => event.dateKey === state.selectedDateKey)
+        .sort(sortByDateTime);
+
+      elements.selectedDateTitle.textContent = date.toLocaleDateString(undefined, {
+        weekday: "long",
+        month: "long",
+        day: "numeric"
+      });
+      elements.selectedDateList.innerHTML = "";
+
+      if (dayEvents.length === 0) {
+        elements.selectedDateList.append(emptyListItem("No visible events for this day."));
+        return;
+      }
+
+      dayEvents.forEach((event) => {
+        elements.selectedDateList.append(createEventCard(event));
+      });
+    }
+
+    function getVisibleEvents() {
+      return events.filter((event) => {
+        const matchesType = state.activeTypes.has(event.type);
+        const haystack = `${event.title} ${event.owner} ${event.note} ${typeLabels[event.type]}`.toLowerCase();
+        const matchesSearch = state.searchTerm === "" || haystack.includes(state.searchTerm);
+        return matchesType && matchesSearch;
+      });
+    }
+
+    function createEventCard(event) {
+      const item = document.createElement("li");
+      item.className = `event-card ${event.hasConflict ? "conflict" : ""}`;
+
+      const conflictText = event.hasConflict ? `<span class="conflict-badge">Conflict</span>` : "";
+      item.innerHTML = `
+        <div class="event-meta">
+          <span class="type-tag ${event.type}">${typeLabels[event.type]}</span>
+          <span>${formatShortDate(event.date)}</span>
+          <span>${event.start}-${event.end}</span>
+          ${conflictText}
+        </div>
+        <p class="event-title">${event.title}</p>
+        <p class="event-note">${event.note} Owner: ${event.owner}.</p>
+      `;
+
+      return item;
+    }
+
+    function emptyListItem(message) {
+      const item = document.createElement("li");
+      item.innerHTML = `<p class="empty-state">${message}</p>`;
+      return item;
+    }
+
+    function markConflicts(sourceEvents) {
+      const grouped = sourceEvents.reduce((groups, event) => {
+        groups[event.dateKey] = groups[event.dateKey] || [];
+        groups[event.dateKey].push(event);
+        return groups;
+      }, {});
+
+      let conflictGroup = 0;
+
+      Object.values(grouped).forEach((dayEvents) => {
+        dayEvents.forEach((event) => {
+          event.hasConflict = false;
+          event.conflictGroup = null;
+        });
+
+        dayEvents.forEach((event, index) => {
+          dayEvents.slice(index + 1).forEach((candidate) => {
+            const overlaps = event.startMinutes < candidate.endMinutes && candidate.startMinutes < event.endMinutes;
+            if (overlaps) {
+              conflictGroup += 1;
+              event.hasConflict = true;
+              candidate.hasConflict = true;
+              event.conflictGroup = event.conflictGroup || conflictGroup;
+              candidate.conflictGroup = candidate.conflictGroup || conflictGroup;
+            }
+          });
+        });
+      });
+    }
+
+    function buildDayLabel(date, dayEvents) {
+      const dateLabel = date.toLocaleDateString(undefined, {
+        weekday: "long",
+        month: "long",
+        day: "numeric"
+      });
+
+      if (dayEvents.length === 0) {
+        return `${dateLabel}. No visible events.`;
+      }
+
+      const eventSummary = dayEvents.map((event) => `${event.title} at ${event.start}`).join(", ");
+      return `${dateLabel}. ${dayEvents.length} event${dayEvents.length === 1 ? "" : "s"}: ${eventSummary}.`;
+    }
+
+    function sortByDateTime(first, second) {
+      return first.date - second.date || first.startMinutes - second.startMinutes;
+    }
+
+    function addDays(date, days) {
+      const next = new Date(date);
+      next.setDate(next.getDate() + days);
+      return next;
+    }
+
+    function toDateKey(date) {
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, "0");
+      const day = String(date.getDate()).padStart(2, "0");
+      return `${year}-${month}-${day}`;
+    }
+
+    function fromDateKey(dateKey) {
+      const [year, month, day] = dateKey.split("-").map(Number);
+      return new Date(year, month - 1, day);
+    }
+
+    function toMinutes(time) {
+      const [hours, minutes] = time.split(":").map(Number);
+      return hours * 60 + minutes;
+    }
+
+    function formatShortDate(date) {
+      return date.toLocaleDateString(undefined, {
+        month: "short",
+        day: "numeric"
+      });
+    }
+  </script>
+</body>
+</html>
